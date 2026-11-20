@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Cuotas sin interés o descuento de contado?</title>
+<meta name="description" content="Calculadora para el Black Friday: ¿conviene pagar en cuotas sin interés o aprovechar el descuento de contado? Con tasas e inflación en vivo y un backtest desde 2017.">
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#14213d; --soft:#5a6478; --line:#dfe4ec;
+    --blue:#2a6fdb; --red:#c8372d; --green:#178f6b; --amber:#d48a12; --violet:#7048e8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f1524; --card:#182036; --ink:#eef2fa; --soft:#a4aec4; --line:#2a3550; --blue:#6aa2ff; --red:#ff7b6e; --green:#3fd0a1; --amber:#ffc35a; --violet:#a98bff; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:980px;margin:0 auto;padding:36px 20px 60px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.1;margin:8px 0 10px;letter-spacing:-.02em}
+  .lead{color:var(--soft);font-size:17px;max-width:66ch;margin:0 0 18px}
+  #status{font-size:12.5px;color:var(--soft);margin:0 0 14px}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:18px}
+  .controls label{font-size:12.5px;color:var(--soft);font-weight:600;display:block;margin-bottom:5px}
+  input,select{font:inherit;font-size:15px;width:100%;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  .wide{grid-column:1 / -1}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .kpi .l{font-size:12.5px;color:var(--soft);font-weight:600}
+  .kpi .v{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:2px 0}
+  .kpi .s{font-size:13.5px;color:var(--soft)}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .story{background:var(--card);border-left:4px solid var(--blue);border-radius:10px;padding:14px 18px;margin:0 0 20px;font-size:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 18px 16px;margin-bottom:20px}
+  .panel h2{font-size:19px;margin:0 0 4px}
+  .panel .sub{color:var(--soft);font-size:14px;margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{font-size:12.5px;color:var(--soft);font-weight:600}
+  tr.sel td{font-weight:800}
+  svg{width:100%;height:auto;display:block}
+  .ax{fill:var(--soft);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .lbl{fill:var(--ink);font-size:12.5px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--soft);margin:2px 0 8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:12px}
+  .chip{border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:center;font-size:12px;color:var(--soft)}
+  .chip b{display:block;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .method{font-size:13.5px;color:var(--soft)}
+  .method code{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+  a{color:var(--blue)}
+  footer{font-size:13px;color:var(--soft);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Black Friday &middot; 27 de noviembre &middot; Tasas e inflación en vivo</div>
+  <h1>¿Cuotas sin interés o descuento de contado?</h1>
+  <p class="lead">"12 cuotas sin interés" o "20% off pagando de contado": cuál conviene depende de cuánto valen los pesos de las cuotas futuras. Esta página lo calcula con las tasas de plazo fijo y la inflación de hoy.</p>
+  <p id="status">Cargando tasas e inflación&hellip;</p>
+
+  <div class="controls">
+    <div><label for="precio">Precio de lista</label><input id="precio" type="number" min="1" step="1000" value="1000000"></div>
+    <div><label for="desc">Descuento pagando de contado (%)</label><input id="desc" type="number" min="0" max="90" step="1" value="15"></div>
+    <div><label for="n">Cuotas</label>
+      <select id="n"><option>3</option><option>6</option><option>9</option><option selected>12</option><option>18</option></select></div>
+    <div><label for="recargo">Recargo en cuotas (%)</label><input id="recargo" type="number" min="0" max="200" step="1" value="0"></div>
+    <div class="wide"><label for="tasa">¿Con qué tasa comparo?</label><select id="tasa"></select></div>
+    <div id="custom-wrap" hidden><label for="custom">Tasa mensual propia (%)</label><input id="custom" type="number" step="0.1" value="2"></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div class="story" id="story"></div>
+
+  <div class="panel">
+    <h2>Machete: el descuento que empata</h2>
+    <p class="sub">Si te ofrecen más que esto por pagar de contado, conviene contado. Si te ofrecen menos, convienen las cuotas (sin interés, con la tasa elegida).</p>
+    <table id="machete"></table>
+  </div>
+
+  <div class="panel">
+    <h2>Backtest: cuánto valían las cuotas con la inflación que realmente pasó</h2>
+    <p class="sub">Para cada mes de compra desde 2017: el descuento de contado que empataba con N cuotas sin interés, usando la inflación que se registró después. Cuanto más alto, más convenían las cuotas.</p>
+    <div class="legend">
+      <span><i style="background:var(--violet)"></i>12 cuotas</span>
+      <span><i style="background:var(--blue)"></i>6 cuotas</span>
+      <span><i style="background:var(--amber)"></i>3 cuotas</span>
+    </div>
+    <svg id="bt" viewBox="0 0 900 360" role="img" aria-label="Descuento equivalente de las cuotas por mes de compra"></svg>
+    <p class="sub" style="margin:14px 0 4px"><b>Cada Black Friday (compras de noviembre), 12 cuotas sin interés equivalían a:</b></p>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="panel method">
+    <h2>Método y fuentes</h2>
+    <p><b>Valor de las cuotas hoy:</b> <code>Σ cuota / (1 + r)^k</code> para k = 1…N. La primera cuota se paga en el próximo resumen, dentro de un mes. <code>r</code> es la tasa mensual elegida: TNA de plazo fijo a 30 días × 30 / 365, o la inflación mensual.</p>
+    <p><b>Datos en vivo:</b> tasas de plazo fijo por banco e inflación mensual del INDEC, de <a href="https://argentinadatos.com" target="_blank" rel="noopener">argentinadatos.com</a>. Si la API no responde, se usa una copia del 20/11/2026.</p>
+    <p><b>Backtest:</b> <code>backtest.py</code> deflacta cada cuota por la inflación efectivamente registrada en los meses siguientes y escribe <code>backtest.csv</code>. Un workflow de GitHub Actions lo actualiza cuando sale un dato nuevo de inflación.</p>
+    <p><b>Límites:</b> no es asesoramiento financiero. No contempla el costo de que las cuotas ocupen tu límite de tarjeta, ni promociones de reintegro. Si tenés que endeudarte para pagar de contado, la tasa relevante es la de ese préstamo.</p>
+  </div>
+
+  <footer>Lucas Selis · Data Analyst &middot; <a href="https://github.com/LucasSelis/cuotas-o-contado" target="_blank" rel="noopener">Código</a> &middot; <a href="https://www.linkedin.com/in/lucas-selis/" target="_blank" rel="noopener">LinkedIn</a></footer>
+</div>
+
+<script src="calculo.js"></script>
+<script>
+const FALLBACK = {
+  fecha: "20/11/2026",
+  bancos: [{ entidad: "BANCO BICA S.A.", tnaClientes: 0.24 }, { entidad: "Mediana", tnaClientes: 0.205 }],
+  mediana: 0.205,
+  inflacion: [{ fecha: "2026-08-31", valor: 1.7 }, { fecha: "2026-09-30", valor: 1.9 }, { fecha: "2026-10-31", valor: 2.2 }],
+};
+
+const $ = (id) => document.getElementById(id);
+const pesos = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+const pct = (x, d = 1) => (x * 100).toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
+const mesTxt = (m) => new Date(m.slice(0, 7) + "-15").toLocaleDateString("es-AR", { month: "short", year: "numeric" });
+let tasas = [];
+
+async function cargar() {
+  let bancos, inflacion, enVivo = true;
+  try {
+    const [b, i] = await Promise.all([
+      fetch("https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo").then((r) => r.json()),
+      fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacion").then((r) => r.json()),
+    ]);
+    bancos = b; inflacion = i;
+    if (!mejorPlazoFijo(bancos) || inflacion.length < 3) throw new Error("datos incompletos");
+  } catch (e) {
+    bancos = FALLBACK.bancos; inflacion = FALLBACK.inflacion; enVivo = false;
+  }
+  const mejor = mejorPlazoFijo(bancos);
+  const mediana = enVivo ? medianaPlazoFijo(bancos) : FALLBACK.mediana;
+  const ult = inflacion[inflacion.length - 1];
+  const nombreBanco = mejor.entidad.replace(/ S\.A\.?$/i, "").replace(/^BANCO /i, "Banco ").toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+  tasas = [
+    { id: "mediana", txt: `Plazo fijo, banco típico (mediana): ${pct(mediana)} TNA → ${pct(temDesdeTna(mediana), 2)} mensual`, r: temDesdeTna(mediana) },
+    { id: "mejor", txt: `Plazo fijo, mejor tasa (${nombreBanco}): ${pct(mejor.tnaClientes)} TNA → ${pct(temDesdeTna(mejor.tnaClientes), 2)} mensual`, r: temDesdeTna(mejor.tnaClientes) },
+    { id: "inf1", txt: `Inflación del último mes (${mesTxt(ult.fecha)}): ${pct(ult.valor / 100)}`, r: ult.valor / 100 },
+    { id: "inf3", txt: `Inflación promedio de los últimos 3 meses: ${pct(inflacionPromedio(inflacion, 3), 2)}`, r: inflacionPromedio(inflacion, 3) },
+    { id: "custom", txt: "Otra tasa mensual (la cargo yo)", r: null },
+  ];
+  $("tasa").innerHTML = tasas.map((t) => `<option value="${t.id}">${t.txt}</option>`).join("");
+  $("status").textContent = enVivo
+    ? `Tasas de ${bancos.length} bancos e inflación del INDEC en vivo (argentinadatos.com) · último dato de inflación: ${mesTxt(ult.fecha)}`
+    : `No se pudo consultar la API: se usa la copia del ${FALLBACK.fecha}.`;
+  render();
+}
+
+function tasaElegida() {
+  const t = tasas.find((x) => x.id === $("tasa").value) || tasas[0];
+  $("custom-wrap").hidden = t.id !== "custom";
+  return t.id === "custom" ? Number($("custom").value) / 100 : t.r;
+}
+
+function render() {
+  if (!tasas.length) return;
+  const precio = Number($("precio").value);
+  const descuento = Number($("desc").value) / 100;
+  const n = Number($("n").value);
+  const recargo = Number($("recargo").value) / 100;
+  const r = tasaElegida();
+  if (!(precio > 0) || !(r > -1)) return;
+  const v = veredicto({ precio, descuento, n, tasaMensual: r, recargo });
+
+  const gana = v.conviene === "contado" ? "Pagar de contado" : v.conviene === "cuotas" ? `Las ${n} cuotas` : "Da casi lo mismo";
+  $("kpis").innerHTML = `
+    <div class="kpi"><div class="l">Conviene</div><div class="v ${v.conviene === "empate" ? "" : "pos"}">${gana}</div><div class="s">${v.conviene === "empate" ? "la diferencia es menor al 0,5%" : "te ahorrás " + pesos(v.ahorro) + " en pesos de hoy"}</div></div>
+    <div class="kpi"><div class="l">De contado pagás</div><div class="v">${pesos(v.contado)}</div><div class="s">${pct(descuento, 0)} de descuento sobre ${pesos(precio)}</div></div>
+    <div class="kpi"><div class="l">En cuotas pagás, en pesos de hoy</div><div class="v">${pesos(v.cuotas)}</div><div class="s">${n} cuotas de ${pesos((precio * (1 + recargo)) / n)}</div></div>`;
+
+  $("story").innerHTML = recargo > 0
+    ? `Con ${pct(recargo, 0)} de recargo, las ${n} cuotas equivalen a un descuento de <b>${pct(v.empate)}</b> (si es negativo, las cuotas salen más caras que el precio de lista hoy).`
+    : `Con esta tasa, ${n} cuotas sin interés equivalen a un <b>${pct(v.empate)} de descuento</b>. Si te ofrecen más por pagar de contado, conviene contado.`;
+
+  const filas = [3, 6, 9, 12, 18].map((k) => {
+    const cols = tasas.filter((t) => t.r !== null).map((t) => `<td>${pct(descuentoQueEmpata(k, t.r, recargo))}</td>`).join("");
+    return `<tr class="${k === n ? "sel" : ""}"><td>${k} cuotas</td>${cols}</tr>`;
+  }).join("");
+  $("machete").innerHTML = `<tr><th></th><th>Plazo fijo típico</th><th>Mejor plazo fijo</th><th>Inflación último mes</th><th>Inflación 3 meses</th></tr>${filas}`;
+}
+
+async function dibujarBacktest() {
+  let filas;
+  try {
+    const txt = await (await fetch("backtest.csv", { cache: "no-store" })).text();
+    const [cab, ...rest] = txt.trim().split(/\r?\n/);
+    const cols = cab.split(",");
+    filas = rest.map((l) => Object.fromEntries(l.split(",").map((v, i) => [cols[i], cols[i] === "mes" ? v : v === "" ? null : Number(v)])));
+  } catch (e) { return; }
+
+  const W = 900, H = 360, L = 50, R = 16, T = 16, B = 34, max = 0.6;
+  const xs = (i) => L + (i / (filas.length - 1)) * (W - L - R);
+  const ys = (v) => T + (1 - v / max) * (H - T - B);
+  let s = "";
+  for (const v of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) {
+    s += `<line x1="${L}" x2="${W - R}" y1="${ys(v)}" y2="${ys(v)}" stroke="var(--line)"/><text class="ax" x="${L - 8}" y="${ys(v) + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
+  }
+  filas.forEach((f, i) => {
+    if (f.mes.endsWith("-01")) s += `<text class="ax" x="${xs(i)}" y="${H - 12}" text-anchor="middle">${f.mes.slice(0, 4)}</text>`;
+    if (f.mes.endsWith("-11")) s += `<line x1="${xs(i)}" x2="${xs(i)}" y1="${T}" y2="${H - B}" stroke="var(--soft)" stroke-dasharray="2 4" opacity=".5"/>`;
+  });
+  for (const [col, color] of [["cuotas_3", "var(--amber)"], ["cuotas_6", "var(--blue)"], ["cuotas_12", "var(--violet)"]]) {
+    const d = filas.map((f, i) => (f[col] == null ? null : `${xs(i).toFixed(1)} ${ys(f[col]).toFixed(1)}`)).filter(Boolean);
+    s += `<path d="M${d.join(" L")}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round"/>`;
+  }
+  const pico = filas.filter((f) => f.cuotas_12 != null).reduce((a, b) => (b.cuotas_12 > a.cuotas_12 ? b : a));
+  const ip = filas.indexOf(pico);
+  s += `<circle cx="${xs(ip)}" cy="${ys(pico.cuotas_12)}" r="5" fill="var(--violet)" stroke="var(--card)" stroke-width="2"/>`;
+  s += `<text class="lbl" x="${xs(ip) - 10}" y="${ys(pico.cuotas_12) + 4}" text-anchor="end" font-weight="700">${mesTxt(pico.mes)}: ${pct(pico.cuotas_12, 0)}</text>`;
+  $("bt").innerHTML = s;
+
+  $("chips").innerHTML = filas.filter((f) => f.mes.endsWith("-11") && f.cuotas_12 != null)
+    .map((f) => `<div class="chip">BF ${f.mes.slice(0, 4)}<b>${pct(f.cuotas_12, 0)}</b></div>`).join("");
+}
+
+for (const id of ["precio", "desc", "n", "recargo", "tasa", "custom"]) $(id).addEventListener("input", render);
+cargar();
+dibujarBacktest();
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Tests · calculo.js</title></head>
+<body>
+<pre id="out"></pre>
+<script src="calculo.js"></script>
+<script>
+const res = [];
+function test(nombre, fn) {
+  try { fn(); res.push("ok   " + nombre); }
+  catch (e) { res.push("FAIL " + nombre + " → " + e.message); }
+}
+function igual(a, b) { if (a !== b) throw new Error(`esperaba ${b}, dio ${a}`); }
+function cerca(a, b, tol = 1e-9) { if (Math.abs(a - b) > tol) throw new Error(`esperaba ~${b}, dio ${a}`); }
+
+test("TEM de un plazo fijo a 30 días: TNA × 30 / 365", () => cerca(temDesdeTna(0.365), 0.03));
+test("sin tasa, las cuotas valen el precio completo", () => cerca(valorPresenteCuotas(1200, 12, 0), 1200));
+test("una cuota se descuenta un mes", () => cerca(valorPresenteCuotas(110, 1, 0.10), 100));
+test("dos cuotas: 50/1,1 + 50/1,21", () => cerca(valorPresenteCuotas(100, 2, 0.10), 50 / 1.1 + 50 / 1.21));
+test("el recargo de las cuotas se suma al precio", () => cerca(valorPresenteCuotas(100, 1, 0, 0.2), 120));
+test("cantidad de cuotas no entera devuelve NaN", () => igual(Number.isNaN(valorPresenteCuotas(100, 2.5, 0.02)), true));
+test("tasa de -100% o menos lanza error", () => {
+  let lanzo = false;
+  try { valorPresenteCuotas(100, 3, -1); } catch (e) { lanzo = e instanceof RangeError; }
+  igual(lanzo, true);
+});
+test("más cuotas = descuento que empata más alto", () => {
+  igual(descuentoQueEmpata(12, 0.02) > descuentoQueEmpata(6, 0.02), true);
+});
+test("con descuento mayor al de empate, conviene contado", () => {
+  const e = descuentoQueEmpata(6, 0.02);
+  igual(veredicto({ precio: 100000, descuento: e + 0.03, n: 6, tasaMensual: 0.02 }).conviene, "contado");
+});
+test("con descuento menor al de empate, convienen las cuotas", () => {
+  const e = descuentoQueEmpata(6, 0.02);
+  igual(veredicto({ precio: 100000, descuento: e - 0.03, n: 6, tasaMensual: 0.02 }).conviene, "cuotas");
+});
+test("mejor plazo fijo ignora tasas en 0 o absurdas", () => {
+  const b = mejorPlazoFijo([{ entidad: "A", tnaClientes: 0 }, { entidad: "B", tnaClientes: 0.21 }, { entidad: "C", tnaClientes: 19 }, { entidad: "D", tnaClientes: 0.18 }]);
+  igual(b.entidad, "B");
+});
+test("mediana de plazo fijo con cantidad par de bancos", () => {
+  cerca(medianaPlazoFijo([{ tnaClientes: 0.2 }, { tnaClientes: 0 }, { tnaClientes: 0.18 }, { tnaClientes: 0.22 }, { tnaClientes: 0.24 }]), 0.21);
+});
+test("inflación promedio geométrica de 3 meses", () => {
+  const s = [{ valor: 1 }, { valor: 2 }, { valor: 3 }];
+  cerca(inflacionPromedio(s, 3), (1.01 * 1.02 * 1.03) ** (1 / 3) - 1);
+});
+
+const fallas = res.filter((r) => r.startsWith("FAIL")).length;
+res.push("", `${res.length - fallas} ok, ${fallas} fallas`);
+document.getElementById("out").textContent = res.join("\n");
+document.title = fallas ? "FALLAN TESTS" : "TESTS OK";
+</script>
+</body>
+</html>

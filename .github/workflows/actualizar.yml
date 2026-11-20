@@ -1,0 +1,32 @@
+name: Tests y actualización del backtest
+
+on:
+  push:
+  schedule:
+    - cron: "0 12 16 * *"  # una vez por mes, después de que el INDEC publica la inflación
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tests-y-backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tests
+        run: python -m unittest -v test_backtest
+      - name: Actualizar backtest.csv
+        if: github.event_name != 'push'
+        run: python backtest.py
+      - name: Commit si cambió
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backtest.csv
+          git diff --cached --quiet || git commit -m "Actualiza backtest.csv"
+          git push
